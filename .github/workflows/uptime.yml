@@ -18,6 +18,11 @@ on:
     # Keepalive mensual (ver job `keepalive`). Minuto 7 para no coincidir con el */10.
     - cron: "7 6 1 * *"
   workflow_dispatch: # para probarlo a mano
+    inputs:
+      prueba:
+        description: "Enviar solo un mensaje de prueba a Telegram (no chequea ni toca el estado)"
+        type: boolean
+        default: false
 
 jobs:
   check:
@@ -56,7 +61,12 @@ jobs:
         # `|| true`: el script sale con 1 cuando algo está caído, y eso NO debe marcar el workflow
         # en rojo — el resultado ya se comunicó por Telegram. Un workflow rojo cada 10 minutos es
         # otra forma de ruido que se termina ignorando. El detalle queda en el log del paso.
-        run: node scripts/uptime-check.mjs --state=.uptime-state.json || true
+        run: |
+          if [ "${{ inputs.prueba }}" = "true" ]; then
+            node scripts/uptime-check.mjs --prueba
+          else
+            node scripts/uptime-check.mjs --state=.uptime-state.json || true
+          fi
 
       - name: Guardar estado
         if: always()

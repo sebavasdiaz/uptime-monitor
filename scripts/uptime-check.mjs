@@ -314,6 +314,17 @@ async function main() {
     argv.find((a) => a.startsWith("--state="))?.split("=")[1] ?? null;
   const notify = !argv.includes("--no-notify");
 
+  // `--prueba`: manda UN mensaje de prueba y termina, sin tocar el estado. Sirve para comprobar que
+  // los secrets de Telegram del repo funcionan sin esperar a una caída real (el monitor solo avisa
+  // en las transiciones). Se lanza a mano: `gh workflow run uptime.yml -f prueba=true`.
+  if (argv.includes("--prueba")) {
+    const out = await sendTelegram(
+      "🧪 uptime-monitor: mensaje de prueba. Si lo lees, las alertas de caída llegarán a este chat.",
+    );
+    console.log(out.sent ? "📨 prueba enviada a Telegram" : `⚠️ prueba NO enviada: ${out.reason}`);
+    process.exit(out.sent ? 0 : 1);
+  }
+
   const previous =
     statePath && existsSync(statePath)
       ? JSON.parse(readFileSync(statePath, "utf8"))
