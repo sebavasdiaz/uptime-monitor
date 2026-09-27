@@ -1,0 +1,84 @@
+name: uptime
+
+# Vigila que los dominios del portafolio respondan y avisa por Telegram cuando cambian de estado.
+#
+# CORRE EN GITHUB ACTIONS A PROPÓSITO, NO EN UN VPS.
+# El 2026-08-08 los tres dominios del edge compartido estuvieron ~45 h caídos sin que nadie se
+# enterara. Ya existía monitoreo, pero corría EN EL VPS: un proceso que vive en la máquina caída no
+# puede avisar que la máquina está caída.
+#
+# ES UN REPO PÚBLICO A PROPÓSITO: en repos públicos los minutos de Actions no se facturan. El mismo
+# cron en el repo privado vissed consumía la cuota de toda la cuenta.
+
+on:
+  schedule:
+    # Cada 10 minutos. El cron de GitHub no es puntual (puede atrasarse en horas pico) y está bien:
+    # acá importa detectar una caída de horas, no de segundos.
+    - cron: "*/10 * * * *"
+    # Keepalive mensual (ver job `keepalive`). Minuto 7 para no coincidir con el */10.
+    - cron: "7 6 1 * *"
+  workflow_dispatch: # para probarlo a mano
+
+jobs:
+  check:
+    # El keepalive no necesita un chequeo extra.
+    if: github.event.schedule != '7 6 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { contents: read }
+    # Un solo chequeo a la vez: dos en paralelo pelearían por el estado y podrían duplicar la
+    # alerta o perder una transición. (A nivel de job para que el keepalive no lo desplace.)
+    concurrency:
+      group: uptime
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with: { node-version: 22 }
+      # Sin `npm ci`: el chequeo no tiene dependencias (solo `fetch` y la API de Telegram por HTTPS).
+
+      # El estado anterior vive en la caché de Actions. Sin él, una caída de 45 h con chequeo cada
+      # 10 min manda 270 mensajes idénticos — y un canal que grita se silencia.
+      # Si la caché se pierde, `diffState` trata todo como "estaba sano": como mucho se repite UNA
+      # alerta, nunca se pierde una caída.
+      - name: Restaurar estado anterior
+        uses: actions/cache/restore@v6
+        with:
+          path: .uptime-state.json
+          key: uptime-state-${{ github.run_id }}
+          restore-keys: uptime-state-
+
+      - name: Chequear dominios
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        # `|| true`: el script sale con 1 cuando algo está caído, y eso NO debe marcar el workflow
+        # en rojo — el resultado ya se comunicó por Telegram. Un workflow rojo cada 10 minutos es
+        # otra forma de ruido que se termina ignorando. El detalle queda en el log del paso.
+        run: node scripts/uptime-check.mjs --state=.uptime-state.json || true
+
+      - name: Guardar estado
+        if: always()
+        uses: actions/cache/save@v6
+        with:
+          path: .uptime-state.json
+          key: uptime-state-${{ github.run_id }}
+
+  keepalive:
+    # GitHub desactiva los workflows programados de un repo PÚBLICO tras 60 días sin actividad en
+    # el repo. Un commit vacío al mes es actividad y reinicia ese plazo. Se prefirió al endpoint
+    # `.../workflows/{id}/enable` porque ese solo reactiva un workflow YA desactivado, y para
+    # entonces este mismo cron también lo estaría.
+    if: github.event.schedule == '7 6 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v7
+      - name: Commit vacío de keepalive
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keepalive mensual del cron (repo público, 60 días)"
+          git push
