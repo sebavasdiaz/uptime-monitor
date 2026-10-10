@@ -16,6 +16,8 @@ secretos, IPs ni tokens**; solo URLs públicas. Las credenciales de Telegram van
 | `https://vissed.com/privacy` | HTTP < 400 |
 | `https://www.falcongrow.com/` | HTTP < 400 |
 | `https://www.falcongrow.com/comprar/seguidores-instagram` | HTTP < 400 **y** el HTML contiene `AggregateOffer` (si no: "sin precio en el HTML") |
+| `https://master.meclab.cl/healthz` | HTTP < 400 **y** cuerpo `ok` — API de VehiculosBD + base (VPS propio vbd-01; el sitio pide credenciales, este path no) |
+| `https://master.meclab.cl/healthz/host` | HTTP < 400 **y** cuerpo `ok` — resultado de la vigilancia local de vbd-01 (disco, RAM, contenedores, backups) |
 
 Los cuatro primeros comparten un mismo edge nginx; si caen todos a la vez, la alerta lo dice.
 
