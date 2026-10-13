@@ -69,6 +69,18 @@ export const TARGETS = [
     mustContain: "AggregateOffer",
     why: "Página de compra más vendida. Sin `AggregateOffer` en el HTML la página no muestra precio (y Google pierde el rich result).",
   },
+  {
+    name: "vehiculosbd",
+    url: "https://master.meclab.cl/healthz",
+    mustContain: "ok",
+    why: "VehiculosBD en su VPS propio (vbd-01, NO el edge compartido): la API no responde o perdió la base / el índice de búsqueda.",
+  },
+  {
+    name: "vbd-01 host",
+    url: "https://master.meclab.cl/healthz/host",
+    mustContain: "ok",
+    why: "La vigilancia local de vbd-01 encontró un problema (disco, RAM, contenedor caído, backup viejo, cert). Detalle: ssh al VPS y `journalctl -u infra-vigilar`.",
+  },
 ];
 
 export function isHealthy(result) {

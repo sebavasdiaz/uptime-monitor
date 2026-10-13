@@ -256,6 +256,11 @@ test("TARGETS: cubre los 3 dominios del edge + la URL que exige la CWS", () => {
     expect_ok(names.includes(d), `falta ${d}`);
   }
   expect_ok(names.some((n) => n.includes("privacy")));
+  // VehiculosBD vive en su propio VPS: nunca debe contar para "cayó el edge compartido".
+  for (const t of TARGETS.filter((t) => t.url.includes("master.meclab.cl"))) {
+    expect_ok(t.edge === undefined, `${t.name} no pasa por el edge compartido`);
+    expect_ok(t.mustContain === "ok", `${t.name} debe exigir "ok" en el cuerpo`);
+  }
   // Cada objetivo explica por qué importa: quien recibe la alerta de madrugada no debería
   // tener que abrir el código para saber si es urgente.
   for (const t of TARGETS)
