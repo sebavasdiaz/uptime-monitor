@@ -11,6 +11,7 @@ secretos, IPs ni tokens**; solo URLs públicas. Las credenciales de Telegram van
 | Objetivo | Chequeo |
 | --- | --- |
 | `https://smartrefresh.app/` | HTTP < 400 |
+| `https://smartrefresh.app/api/health` | HTTP < 400 **y** cuerpo `"ok":true` — API de SmartRefresh (`sr_api`). La home es estática: sin esto, la API estuvo caída 5 días (2026-10-13→18) sin alerta |
 | `https://vissed.com/` | HTTP < 400 |
 | `https://falcontrend.com/` | HTTP < 400 |
 | `https://vissed.com/privacy` | HTTP < 400 |
