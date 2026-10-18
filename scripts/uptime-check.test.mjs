@@ -235,6 +235,15 @@ test("probe: página 200 CON la cadena exigida → sana", async () => {
   expect_eq(isHealthy(r), true);
 });
 
+test("probe: con missingMsg, la alerta de contenido dice ese mensaje y no 'sin precio'", async () => {
+  const r = await probe(
+    { name: "x", url: "https://x/", mustContain: '"ok":true', missingMsg: "la API respondió mal" },
+    { fetchImpl: async () => ({ status: 200, text: async () => "{}" }) },
+  );
+  expect_ok(!isHealthy(r));
+  expect_match(r.error, /la API respondió mal/);
+});
+
 test("buildAlert: la alerta de contenido dice 'sin precio en el HTML'", async () => {
   const r = await probe(
     { name: "falcongrow.com/comprar", url: "https://x/", mustContain: "AggregateOffer" },
@@ -261,6 +270,11 @@ test("TARGETS: cubre los 3 dominios del edge + la URL que exige la CWS", () => {
     expect_ok(t.edge === undefined, `${t.name} no pasa por el edge compartido`);
     expect_ok(t.mustContain === "ok", `${t.name} debe exigir "ok" en el cuerpo`);
   }
+  // La API de SmartRefresh: la home estática no ve una API caída (incidente 2026-10-13→18).
+  const api = TARGETS.find((t) => t.url === "https://smartrefresh.app/api/health");
+  expect_ok(api, "falta la API de SmartRefresh");
+  expect_ok(api.edge === undefined, "la API sola no debe contar para 'cayó el edge'");
+  expect_ok(api.mustContain === '"ok":true', "la API debe exigir \"ok\":true");
   // Cada objetivo explica por qué importa: quien recibe la alerta de madrugada no debería
   // tener que abrir el código para saber si es urgente.
   for (const t of TARGETS)

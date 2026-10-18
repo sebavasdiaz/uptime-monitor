@@ -32,6 +32,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
  *   TODOS esos se culpa al edge; falcongrow.com vive en otro VPS y no entra en esa cuenta.
  * - `mustContain`: además del status, el HTML debe contener esa cadena. Sirve para detectar una
  *   página que responde 200 pero ya no vende (sin precio en el HTML).
+ * - `missingMsg`: qué decir cuando falta `mustContain` (por defecto, "sin precio en el HTML").
  */
 export const TARGETS = [
   {
@@ -39,6 +40,13 @@ export const TARGETS = [
     url: "https://smartrefresh.app/",
     edge: "compartido",
     why: "Producto principal. Si está caído, hay usuarios afectados AHORA.",
+  },
+  {
+    name: "smartrefresh.app/api",
+    url: "https://smartrefresh.app/api/health",
+    mustContain: '"ok":true',
+    missingMsg: "la API respondió sin `\"ok\":true`",
+    why: "API de SmartRefresh (`sr_api`): sesiones, login y pagos de la extensión. La home es estática y sigue en 200 aunque la API esté caída — así pasó 5 días sin alerta (2026-10-13→18, 502). Primero: `docker ps -a | grep sr_api` en mip-vps.",
   },
   {
     name: "vissed.com",
@@ -115,7 +123,8 @@ export async function probe(
       const body = await res.text();
       if (!body.includes(target.mustContain)) {
         result.contentMissing = true;
-        result.error = `sin precio en el HTML (falta ${target.mustContain})`;
+        result.error =
+          target.missingMsg ?? `sin precio en el HTML (falta ${target.mustContain})`;
       }
     }
     return result;
